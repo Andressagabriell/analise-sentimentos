@@ -94,8 +94,8 @@ def main():
     for i, v in enumerate(valores):
         ax2.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontweight='bold')
 
-    fig.suptitle(f'Frase analisada: "{texto}"', fontsize=11, y=1.02)
-    plt.tight_layout()
+    fig.suptitle(f'Frase analisada: "{texto}"', fontsize=11)
+    plt.tight_layout(rect=[0, 0, 1, 0.93])  # reserva espaço no topo para o suptitle
     plt.show()
 
 
