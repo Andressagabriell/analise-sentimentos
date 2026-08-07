@@ -26,7 +26,7 @@ def traduzir_para_ingles(texto):
 def analisar_sentimento_vader(texto_em_ingles):
     analyzer = SentimentIntensityAnalyzer()
     scores = analyzer.polarity_scores(texto_em_ingles)
-    return scores['compound']
+    return scores  # retorna o dicionário completo: neg, neu, pos, compound
 
 
 def main():
@@ -42,34 +42,59 @@ def main():
     print(f"Texto traduzido (uso interno): {texto_traduzido}")
 
     # 2) Analisa o sentimento sobre o texto já em inglês
-    polaridade = analisar_sentimento_vader(texto_traduzido)
+    scores = analisar_sentimento_vader(texto_traduzido)
+    polaridade = scores['compound']
 
     # Define cor e rótulo baseado no score
     if polaridade >= 0.05:
         resultado = "Positivo"
         cor = 'green'
+        emoji = "😊"
     elif polaridade <= -0.05:
         resultado = "Negativo"
         cor = 'red'
+        emoji = "😠"
     else:
         resultado = "Neutro"
         cor = 'gray'
+        emoji = "😐"
 
     print(f"\nResultado: {resultado}")
-    print(f"Score: {polaridade:.4f} (Varia de -1 a 1)")
+    print(f"Score (compound): {polaridade:.4f} (Varia de -1 a 1)")
+    print(f"Negativo: {scores['neg']:.2f} | Neutro: {scores['neu']:.2f} | Positivo: {scores['pos']:.2f}")
 
-    # Geração do Gráfico
-    plt.figure(figsize=(8, 5))
-    bars = plt.bar(['Intensidade'], [abs(polaridade)], color=cor, width=0.4)
+    # ---------- Geração do Gráfico (2 painéis lado a lado) ----------
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
 
-    # Adiciona o valor exato em cima da barra
-    plt.text(0, abs(polaridade) + 0.02, f'{abs(polaridade):.2f}',
-              ha='center', va='bottom', fontweight='bold')
+    # --- Painel 1: Escala geral de -1 a 1 (direção + intensidade) ---
+    ax1.bar(['Sentimento'], [polaridade], color=cor, width=0.4)
+    ax1.axhline(0, color='black', linewidth=1)  # linha do zero
+    ax1.set_ylim(-1.1, 1.1)
+    ax1.set_ylabel("Score (-1 = muito negativo, +1 = muito positivo)")
+    ax1.set_title(f"Sentimento Geral: {resultado} {emoji}")
+    ax1.grid(axis='y', linestyle='--', alpha=0.6)
 
-    plt.title(f"Análise de Sentimento: {resultado}", fontsize=14)
-    plt.ylabel("Intensidade (0 a 1)", fontsize=12)
-    plt.ylim(0, 1.1)  # Espaço extra para o texto não cortar
-    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    # Valor em cima ou embaixo da barra, dependendo do sinal
+    va = 'bottom' if polaridade >= 0 else 'top'
+    offset = 0.05 if polaridade >= 0 else -0.05
+    ax1.text(0, polaridade + offset, f'{polaridade:.2f}',
+              ha='center', va=va, fontweight='bold')
+
+    # --- Painel 2: Composição (negativo / neutro / positivo) ---
+    categorias = ['Negativo', 'Neutro', 'Positivo']
+    valores = [scores['neg'], scores['neu'], scores['pos']]
+    cores_barras = ['red', 'gray', 'green']
+
+    ax2.bar(categorias, valores, color=cores_barras, width=0.5)
+    ax2.set_ylim(0, 1.1)
+    ax2.set_ylabel("Proporção (soma = 1.0)")
+    ax2.set_title("Composição do Sentimento")
+    ax2.grid(axis='y', linestyle='--', alpha=0.6)
+
+    for i, v in enumerate(valores):
+        ax2.text(i, v + 0.02, f'{v:.2f}', ha='center', va='bottom', fontweight='bold')
+
+    fig.suptitle(f'Frase analisada: "{texto}"', fontsize=11, y=1.02)
     plt.tight_layout()
     plt.show()
 
