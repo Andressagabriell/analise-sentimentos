@@ -70,11 +70,46 @@ def traduzir_para_ingles(texto: str, lancar_erro: bool = False) -> str:
         return texto
 
 
-def classificar_score(compound: float) -> str:
-    """Classifica o score compound do VADER em Positivo/Negativo/Neutro."""
-    if compound >= 0.05:
+def classificar_score(scores: dict, limite: float = 0.35, limite_neutro: float = 0.65) -> str:
+    """
+    Classifica o resultado do VADER em Positivo/Negativo/Neutro.
+
+    Combina duas regras para reduzir falsos positivos/negativos em frases
+    fracamente polarizadas (ex: "caixa original" empurrando uma frase
+    puramente descritiva para "Positivo" por causa de 1 palavra):
+
+    1) Threshold mais alto que o padrão do VADER (0.05): por padrão, só
+       classifica como Positivo/Negativo se compound >= 0.35 (ou <= -0.35).
+       O padrão do VADER é sensível demais a ruído de 1 palavra isolada.
+
+    2) Predomínio de neutralidade: se a maior parte da frase (>= 65%) foi
+       classificada como neutra pelo próprio VADER, e o compound não é
+       fortemente polarizado (< 0.35 em módulo), força "Neutro".
+
+    Valores calibrados testando frases reais de e-commerce/atendimento
+    (ex: "chegou na caixa original" não deve virar "Positivo" só por
+    causa da palavra "original").
+
+    Args:
+        scores: dict com as chaves 'neg', 'neu', 'pos', 'compound'
+                (mesmo formato retornado por analyzer.polarity_scores()).
+        limite: threshold mínimo (em módulo) do compound para considerar
+                Positivo/Negativo. Ajustável conforme o domínio.
+        limite_neutro: proporção mínima de 'neu' para acionar a regra 2.
+
+    Returns:
+        "Positivo" | "Negativo" | "Neutro"
+    """
+    compound = scores["compound"]
+
+    # Regra 2: frase majoritariamente neutra e sem polarização forte
+    if scores["neu"] >= limite_neutro and abs(compound) < 0.3:
+        return "Neutro"
+
+    # Regra 1: threshold padrão (mais conservador que o 0.05 "cru" do VADER)
+    if compound >= limite:
         return "Positivo"
-    elif compound <= -0.05:
+    elif compound <= -limite:
         return "Negativo"
     return "Neutro"
 
@@ -106,7 +141,7 @@ def analisar_texto(texto_pt: str, lancar_erro_traducao: bool = False) -> dict:
         "neu": scores["neu"],
         "pos": scores["pos"],
         "compound": scores["compound"],
-        "classificacao": classificar_score(scores["compound"]),
+        "classificacao": classificar_score(scores),
     }
 
 
