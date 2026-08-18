@@ -8,20 +8,60 @@ from excel_batch import processar_dataframe, gerar_planilha_formatada, detectar_
 
 # ---------- Configuração da página ----------
 st.set_page_config(
-    page_title="Analisador de Sentimentos VADER (PT-BR)",
-    page_icon="🧠",
+    page_title="VADER PT-BR · Analisador de Sentimentos",
+    page_icon="🧭",
     layout="centered"
 )
 
-CORES = {"Positivo": "#22c55e", "Negativo": "#ef4444", "Neutro": "#9aa79a"}
+CORES = {"Positivo": "#22c55e", "Negativo": "#ef4444", "Neutro": "#94a3b8"}
 EMOJIS = {"Positivo": "😊", "Negativo": "😠", "Neutro": "😐"}
 
-# ---------- Interface ----------
-st.title("🧠 Analisador de Sentimentos VADER (PT-BR)")
+# ---------- Sidebar: sobre o projeto, autora, casos de uso ----------
+with st.sidebar:
+    st.markdown("### 🧭 Sobre o projeto")
+    st.markdown(
+        "Ferramenta de análise de sentimentos para texto em **português**, "
+        "feita para times que recebem grande volume de feedback de clientes "
+        "e precisam entender rapidamente o tom geral — sem ler cada mensagem "
+        "uma por uma."
+    )
+
+    st.markdown("---")
+    st.markdown("### 💼 Casos de uso")
+    st.markdown(
+        "- **E-commerce:** avaliações de produtos\n"
+        "- **Atendimento:** tickets e chats de suporte\n"
+        "- **RH:** pesquisas de clima organizacional\n"
+        "- **Marketing:** comentários em redes sociais"
+    )
+
+    st.markdown("---")
+    st.markdown("### 👩‍💻 Autora")
+    st.markdown(
+        "**Andressa Gabriel**\n\n"
+        "Bacharel em TI · Estudante de Eng. de Computação\n\n"
+        "Criadora do AgroFlow (irrigação inteligente)\n\n"
+        "[GitHub](https://github.com/Andressagabriell)"
+    )
+
+    st.markdown("---")
+    st.caption(
+        "Interessado(a) em usar esta ferramenta na sua empresa? "
+        "Entre em contato pelo GitHub acima."
+    )
+
+# ---------- Hero ----------
+st.markdown(
+    "<p style='color:#14B8A6; font-weight:600; letter-spacing:0.08em; "
+    "text-transform:uppercase; font-size:0.8rem; margin-bottom:0;'>"
+    "Análise de sentimentos · Português (BR)</p>",
+    unsafe_allow_html=True,
+)
+st.title("🧭 VADER PT-BR")
 st.caption(
     "Combina o léxico **VADER** (NLTK) com tradução automática via "
-    "**deep_translator**, permitindo analisar sentimentos em textos "
-    "escritos em português."
+    "**deep_translator** para analisar o tom de textos em português — "
+    "uma frase por vez, ou uma planilha inteira de uma só vez."
 )
 
 with st.expander("ℹ️ Como funciona?"):
@@ -32,7 +72,7 @@ with st.expander("ℹ️ Como funciona?"):
         3. O VADER analisa o sentimento do texto traduzido.
         4. O resultado (positivo, negativo ou neutro) é exibido com um gráfico.
 
-        **Stack:** Python · NLTK (VADER) · deep_translator · Matplotlib · Pandas
+        **Stack:** Python · NLTK (VADER) · deep_translator · Matplotlib · Pandas · Streamlit
 
         **Nota sobre limitações:** por ser baseado em léxico (dicionário de
         palavras), o modelo pode ocasionalmente interpretar mal frases
@@ -42,6 +82,7 @@ with st.expander("ℹ️ Como funciona?"):
         """
     )
 
+st.markdown("")
 modo = st.radio(
     "O que você quer analisar?",
     ["Uma frase", "Planilha (lote)"],
@@ -96,7 +137,7 @@ if modo == "Uma frase":
 
             categorias = ['Negativo', 'Neutro', 'Positivo']
             valores = [resultado['neg'], resultado['neu'], resultado['pos']]
-            cores_barras = ['#ef4444', '#9aa79a', '#22c55e']
+            cores_barras = ['#ef4444', '#94a3b8', '#22c55e']
 
             ax2.bar(categorias, valores, color=cores_barras, width=0.5)
             ax2.set_ylim(0, 1.1)
@@ -187,4 +228,8 @@ else:
                 )
 
 st.divider()
-st.caption("Desenvolvido por Andressa Gabriel · [GitHub](https://github.com/Andressagabriell)")
+col_a, col_b = st.columns([3, 1])
+with col_a:
+    st.caption("Desenvolvido por **Andressa Gabriel** · [GitHub](https://github.com/Andressagabriell)")
+with col_b:
+    st.caption("v1.1 · 2026")
