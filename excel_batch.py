@@ -69,9 +69,15 @@ def _ler_tabela(caminho_entrada: str) -> pd.DataFrame:
             )
 
 
-def processar_planilha(caminho_entrada: str, coluna: str | None, caminho_saida: str) -> str:
-    df = _ler_tabela(caminho_entrada)
+def processar_dataframe(df: pd.DataFrame, coluna: str | None = None) -> pd.DataFrame:
+    """
+    Núcleo do processamento em lote, sem depender de arquivos em disco.
+    Recebe um DataFrame já carregado e devolve outro com as colunas de
+    análise de sentimento adicionadas.
 
+    Reutilizada tanto pelo CLI (processar_planilha) quanto pela interface
+    web (app.py, via upload de arquivo).
+    """
     if df.empty:
         raise ValueError("A planilha de entrada está vazia.")
 
@@ -80,13 +86,9 @@ def processar_planilha(caminho_entrada: str, coluna: str | None, caminho_saida: 
     elif coluna not in df.columns:
         raise ValueError(f"Coluna '{coluna}' não encontrada. Colunas disponíveis: {list(df.columns)}")
 
-    print(f"Coluna de texto identificada: '{coluna}'")
-    print(f"Total de linhas a processar: {len(df)}")
-
     textos = df[coluna].fillna("").astype(str).tolist()
     resultados = analisar_lote(textos)
 
-    # Monta as novas colunas a partir dos resultados
     df_resultado = df.copy()
     df_resultado["Sentimento"] = [r["classificacao"] for r in resultados]
     df_resultado["Score (compound)"] = [r["compound"] for r in resultados]
@@ -95,22 +97,45 @@ def processar_planilha(caminho_entrada: str, coluna: str | None, caminho_saida: 
     df_resultado["Positivo (%)"] = [r["pos"] for r in resultados]
     df_resultado["Texto traduzido (EN)"] = [r["texto_traduzido"] for r in resultados]
 
-    df_resultado.to_excel(caminho_saida, index=False, sheet_name="Análise de Sentimento")
+    return df_resultado
 
-    _formatar_planilha(caminho_saida, df_resultado)
 
-    n_erros = sum(1 for r in resultados if r["classificacao"].startswith("ERRO"))
+def processar_planilha(caminho_entrada: str, coluna: str | None, caminho_saida: str) -> str:
+    df = _ler_tabela(caminho_entrada)
+    print(f"Total de linhas a processar: {len(df)}")
+
+    coluna_usada = coluna if coluna is not None else detectar_coluna(df)
+    print(f"Coluna de texto identificada: '{coluna_usada}'")
+
+    df_resultado = processar_dataframe(df, coluna_usada)
+    gerar_planilha_formatada(df_resultado, caminho_saida)
+
+    n_erros = sum(1 for c in df_resultado["Sentimento"] if str(c).startswith("ERRO"))
     if n_erros:
         print(f"⚠️  {n_erros} linha(s) tiveram erro de tradução/análise (ver coluna 'Sentimento').")
 
     return caminho_saida
 
 
-def _formatar_planilha(caminho: str, df: pd.DataFrame):
-    """Aplica formatação profissional: fonte, cabeçalho, cores por sentimento, largura de coluna."""
+def gerar_planilha_formatada(df: pd.DataFrame, destino) -> None:
+    """
+    Escreve o DataFrame já analisado como .xlsx formatado (cabeçalho colorido,
+    linhas coloridas por sentimento, colunas com largura automática).
+
+    `destino` pode ser um caminho de arquivo (str) ou um buffer em memória
+    (io.BytesIO) — este último é usado pela interface web (app.py), que
+    processa o upload sem precisar gravar nada em disco.
+    """
     from openpyxl import load_workbook
 
-    wb = load_workbook(caminho)
+    df.to_excel(destino, index=False, sheet_name="Análise de Sentimento")
+
+    # Se for um buffer em memória, precisa voltar o cursor para o início
+    # antes de reabrir com load_workbook.
+    if hasattr(destino, "seek"):
+        destino.seek(0)
+
+    wb = load_workbook(destino)
     ws = wb.active
 
     fonte_padrao = "Arial"
@@ -143,7 +168,14 @@ def _formatar_planilha(caminho: str, df: pd.DataFrame):
         ws.column_dimensions[letra].width = min(max(maior_valor + 2, 12), 50)
 
     ws.freeze_panes = "A2"  # congela o cabeçalho
-    wb.save(caminho)
+
+    if hasattr(destino, "seek"):
+        destino.seek(0)
+        destino.truncate()  # remove qualquer byte residual do save anterior
+        wb.save(destino)
+        destino.seek(0)
+    else:
+        wb.save(destino)
 
 
 def main():
