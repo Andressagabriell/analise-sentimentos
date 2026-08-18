@@ -1,4 +1,6 @@
-streamlit
 nltk
-deep_translator
+deep-translator
 matplotlib
+pandas
+openpyxl
+streamlit

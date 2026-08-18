@@ -49,8 +49,28 @@ def detectar_coluna(df: pd.DataFrame) -> str:
     )
 
 
+def _ler_tabela(caminho_entrada: str) -> pd.DataFrame:
+    """Lê a planilha de entrada, aceitando tanto .xlsx quanto .csv."""
+    if caminho_entrada.lower().endswith(".csv"):
+        # tenta detectar automaticamente o separador (vírgula ou ponto-e-vírgula,
+        # comum em CSVs exportados em português/Excel-BR)
+        try:
+            return pd.read_csv(caminho_entrada, sep=None, engine="python")
+        except Exception as e:
+            raise ValueError(f"Não consegui ler o CSV: {e}")
+    else:
+        try:
+            return pd.read_excel(caminho_entrada)
+        except ValueError as e:
+            raise ValueError(
+                f"Não consegui abrir '{caminho_entrada}' como planilha Excel "
+                f"(erro: {e}). Se o arquivo foi salvo como texto/CSV com a "
+                f"extensão .xlsx errada, renomeie para .csv e rode de novo."
+            )
+
+
 def processar_planilha(caminho_entrada: str, coluna: str | None, caminho_saida: str) -> str:
-    df = pd.read_excel(caminho_entrada)
+    df = _ler_tabela(caminho_entrada)
 
     if df.empty:
         raise ValueError("A planilha de entrada está vazia.")
@@ -127,13 +147,21 @@ def _formatar_planilha(caminho: str, df: pd.DataFrame):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Analisa sentimento de uma planilha Excel em lote.")
-    parser.add_argument("entrada", help="Caminho da planilha .xlsx de entrada")
+    parser = argparse.ArgumentParser(description="Analisa sentimento de uma planilha em lote (.xlsx ou .csv).")
+    parser.add_argument("entrada", help="Caminho da planilha de entrada (.xlsx ou .csv)")
     parser.add_argument("--coluna", default=None, help="Nome da coluna com os textos (opcional, autodetecta)")
-    parser.add_argument("--saida", default=None, help="Caminho da planilha de saída (opcional)")
+    parser.add_argument("--saida", default=None, help="Caminho da planilha de saída (opcional, sempre .xlsx)")
     args = parser.parse_args()
 
-    caminho_saida = args.saida or args.entrada.replace(".xlsx", "_analisado.xlsx")
+    if args.saida:
+        caminho_saida = args.saida
+    else:
+        base = args.entrada
+        for ext in (".xlsx", ".csv", ".xls"):
+            if base.lower().endswith(ext):
+                base = base[: -len(ext)]
+                break
+        caminho_saida = f"{base}_analisado.xlsx"
 
     try:
         resultado_path = processar_planilha(args.entrada, args.coluna, caminho_saida)
