@@ -1,4 +1,19 @@
-  __pycache__/
-  *.pyc
-  .env
-  venv/
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Arquivos de teste locais (planilhas de exemplo geradas durante testes)
+comentarios_teste.csv
+comentarios_teste_analisado.xlsx
+*_analisado.xlsx
+~$*.xlsx
+
+# Arquivos temporários do Excel (criados ao abrir um arquivo)
+~$*
+
+# Ambiente virtual (caso você use)
+venv/
+.venv/
+
+# Configurações locais de editor
+.vscode/
